@@ -21,17 +21,19 @@ func _ready():
 func _process(delta):
 	if Input.is_action_just_pressed("ui_right"):
 		
-		if not game_finished: #if state was played before
-			if range(history_list.size()).has(history_count+1):
-				current_state = history_list[history_count+1]
-				current_turn = switch_turn(current_turn)
-				visualizer.update_board(current_state.board)
-				history_count+=1
-			else:
+		
+		if range(history_list.size()).has(history_count+1):
+			current_state = history_list[history_count+1]
+			current_turn = switch_turn(current_turn)
+			visualizer.update_board(current_state.board)
+			history_count+=1
+		else:
+			if not game_finished:
 			#WHITE plays minimax,BLACK plays random!
 				if current_turn == WHITE:
 					#var m = minimax(current_state,2,true,WHITE,WHITE)
-					var m = alphabeta(current_state,2,-INF,INF,true,WHITE,WHITE)
+					#var m = alphabeta(current_state,2,-INF,INF,true,WHITE,WHITE)
+					var m = alphabeta_with_forward_pruning(current_state,2,-INF,INF,5,true,WHITE,WHITE)
 					var next_state = m[1]
 					current_state = next_state
 					current_turn = switch_turn(current_turn)
@@ -46,12 +48,12 @@ func _process(delta):
 				history_list.append(current_state)
 				history_count+=1
 
-				if current_state.white_score >= 6:
-					print("White Won!")
-					game_finished = true
-				elif current_state.black_score >= 6:
-					print("Black Won!")
-					game_finished = true
+			if current_state.white_score >= 6:
+				print("White Won!")
+				game_finished = true
+			elif current_state.black_score >= 6:
+				print("Black Won!")
+				game_finished = true
 					
 	
 	elif Input.is_action_just_pressed("ui_left"):
@@ -114,7 +116,60 @@ func alphabeta(state,depth,a,b,maximizer,piece,turn):
 			b = min(b,value)
 		return [value,best_state]
 		
-			
+func alphabeta_with_forward_pruning(state,depth,a,b,n,maximizer,piece,turn):
+	if depth == 0 or state.white_score>=6 or state.black_score>=6:
+		return [eval_state(state,piece),state]
+	if maximizer and depth == 2:
+		var value = -INF
+		var best_state = null
+		var moves_list = []
+		var n_best_moves = []
+		for succesor in Successor.calculate_successor(state,current_turn):
+			moves_list.append(succesor)
+		for i in range(n):
+			var best_move = null
+			var best_move_eval = -INF
+			for move in moves_list:
+				var eval = eval_state(move,piece)
+				if eval>best_move_eval:
+					best_move = move
+					best_move_eval = eval
+			n_best_moves.append(best_move)
+			moves_list.erase(best_move)
+		for move in n_best_moves:
+			var temp = alphabeta_with_forward_pruning(move,depth-1,a,b,n,false,piece,switch_turn(current_turn))
+			if temp[0]>value:
+				value = temp[0]
+				best_state=move
+			if value>=b:
+				break
+			a = max(a,value)
+		return [value,best_state]
+	elif maximizer:
+		var value = -INF
+		var best_state = null
+		for succesor in Successor.calculate_successor(state,current_turn):
+			var temp = alphabeta(succesor,depth-1,a,b,false,piece,switch_turn(current_turn))
+			if temp[0]>value:
+				value = temp[0]
+				best_state=succesor
+			if value>=b:
+				break
+			a = max(a,value)
+		return [value,best_state]
+	else:
+		var value = +INF
+		var best_state = null
+		for succesor in Successor.calculate_successor(state,current_turn):
+			var temp = alphabeta_with_forward_pruning(succesor,depth-1,a,b,n,true,piece,switch_turn(current_turn))
+			if temp[0]<value:
+				value = temp[0]
+				best_state=succesor
+			if value<=a:
+				break
+			b = min(b,value)
+		return [value,best_state]
+		
 		
 func eval_state(state,piece):
 	if state.white_score >= 6:
@@ -275,4 +330,5 @@ func intersect_arrays(arr1, arr2):
 		if arr2_dict.get(v, false):
 			in_both_arrays.append(v)
 	return in_both_arrays	
-	
+
+		
