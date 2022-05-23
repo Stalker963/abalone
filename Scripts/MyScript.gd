@@ -30,7 +30,8 @@ func _process(delta):
 			else:
 			#WHITE plays minimax,BLACK plays random!
 				if current_turn == WHITE:
-					var m = minimax(current_state,2,true,WHITE,WHITE)
+					#var m = minimax(current_state,2,true,WHITE,WHITE)
+					var m = alphabeta(current_state,2,-INF,INF,true,WHITE,WHITE)
 					var next_state = m[1]
 					current_state = next_state
 					current_turn = switch_turn(current_turn)
@@ -62,8 +63,6 @@ func _process(delta):
 		
 			
 		
-		
-			
 func minimax(state,depth,maximizer,piece,turn):
 	if depth == 0 or state.white_score>=6 or state.black_score>=6:
 		return [eval_state(state,piece),state]
@@ -85,6 +84,36 @@ func minimax(state,depth,maximizer,piece,turn):
 				value = temp[0]
 				best_state = succesor
 		return [value,best_state]
+
+		
+func alphabeta(state,depth,a,b,maximizer,piece,turn):
+	if depth == 0 or state.white_score>=6 or state.black_score>=6:
+		return [eval_state(state,piece),state]
+	if maximizer:
+		var value = -INF
+		var best_state = null
+		for succesor in Successor.calculate_successor(state,current_turn):
+			var temp = alphabeta(succesor,depth-1,a,b,false,piece,switch_turn(current_turn))
+			if temp[0]>value:
+				value = temp[0]
+				best_state=succesor
+			if value>=b:
+				break
+			a = max(a,value)
+		return [value,best_state]
+	else:
+		var value = +INF
+		var best_state = null
+		for succesor in Successor.calculate_successor(state,current_turn):
+			var temp = alphabeta(succesor,depth-1,a,b,true,piece,switch_turn(current_turn))
+			if temp[0]<value:
+				value = temp[0]
+				best_state=succesor
+			if value<=a:
+				break
+			b = min(b,value)
+		return [value,best_state]
+		
 			
 		
 func eval_state(state,piece):
@@ -100,7 +129,7 @@ func eval_state(state,piece):
 			return INF
 	else: #not terminal state
 		return heuristic(state,piece)
-		
+	
 		
 func heuristic(state,piece):
 	var center_proximity = center_proximity_hueristic(state,piece)
