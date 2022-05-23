@@ -7,37 +7,61 @@ var game_finished = false;
 var current_state;
 var current_turn = WHITE;
 
+var history_list = []
+var history_count = 0
+
 export var visualizer_path:NodePath;
 onready var visualizer = get_node(visualizer_path)
 
 func _ready():
 	current_state = State.new(BoardManager.current_board)
+	history_list.append(current_state)
 	randomize()
 	
 func _process(delta):
-	if Input.is_action_just_pressed("ui_accept") and not game_finished:
-		#WHITE plays minimax,BLACK plays random!
-		if current_turn == WHITE:
-			var m = minimax(current_state,2,true,WHITE,WHITE)
-			var next_state = m[1]
-			current_state = next_state
-			current_turn = switch_turn(current_turn)
-			visualizer.update_board(current_state.board)
-		elif current_turn == BLACK:
-			var possible_new_states = Successor.calculate_successor(current_state,current_turn);
-			var next_state = possible_new_states[randi()%possible_new_states.size()] #random move!
-			current_state = next_state
-			current_turn = switch_turn(current_turn)
-			visualizer.update_board(current_state.board)
+	if Input.is_action_just_pressed("ui_right"):
+		
+		if not game_finished: #if state was played before
+			if range(history_list.size()).has(history_count+1):
+				current_state = history_list[history_count+1]
+				current_turn = switch_turn(current_turn)
+				visualizer.update_board(current_state.board)
+				history_count+=1
+			else:
+			#WHITE plays minimax,BLACK plays random!
+				if current_turn == WHITE:
+					var m = minimax(current_state,2,true,WHITE,WHITE)
+					var next_state = m[1]
+					current_state = next_state
+					current_turn = switch_turn(current_turn)
+					visualizer.update_board(current_state.board)
+				elif current_turn == BLACK:
+					var possible_new_states = Successor.calculate_successor(current_state,current_turn);
+					var next_state = possible_new_states[randi()%possible_new_states.size()] #random move!
+					current_state = next_state
+					current_turn = switch_turn(current_turn)
+					visualizer.update_board(current_state.board)
+				
+				history_list.append(current_state)
+				history_count+=1
 
-		if current_state.white_score >= 6:
-			print("White Won!")
-			game_finished = true
-		elif current_state.black_score >= 6:
-			print("Black Won!")
-			game_finished = true
+				if current_state.white_score >= 6:
+					print("White Won!")
+					game_finished = true
+				elif current_state.black_score >= 6:
+					print("Black Won!")
+					game_finished = true
+					
+	
+	elif Input.is_action_just_pressed("ui_left"):
+		if history_count != 0:
+			history_count-=1
+			current_state = history_list[history_count]
+			current_turn = switch_turn(current_turn)
+			visualizer.update_board(current_state.board)
+		
 			
-		#print(center_proximity_hueristic(current_state,WHITE))
+		
 		
 			
 func minimax(state,depth,maximizer,piece,turn):
